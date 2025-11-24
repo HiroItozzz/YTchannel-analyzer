@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import requests
 import pandas as pd
+from yt_dlp import YoutubeDL
 import isodate
 from datetime import datetime
 import time
@@ -20,7 +21,7 @@ if DEBUG:
     print(f"API Key loaded: {API_KEY[:10]}...")
 
 
-def getPlaylistIds(video_ids, api_key):
+def get_playlist_ids(video_ids, api_key):
     """Get the channel ID (UC~~)
     →→→→ convert it to the automatically generated playlist ID (UU~~) of all videos on the channel
     """
@@ -68,7 +69,7 @@ def getPlaylistIds(video_ids, api_key):
     return df
 
 
-def getAllVideoIds(playlist_ids: list, api_key):
+def get_all_video_ids(playlist_ids: list, api_key) -> pd.DataFrame:
     base_url = "https://www.googleapis.com/youtube/v3/playlistItems"
     videos = []
     if DEBUG:
@@ -114,7 +115,7 @@ def getAllVideoIds(playlist_ids: list, api_key):
     return pd.DataFrame(videos)
 
 
-def get_video_details(video_ids, api_key):
+def get_video_details(video_ids: list, api_key) -> pd.DataFrame:
     """Get detailed information from video ID list"""
 
     base_url = "https://www.googleapis.com/youtube/v3/videos"
@@ -132,25 +133,27 @@ def get_video_details(video_ids, api_key):
             title = item["snippet"]["title"]
             published_at = item["snippet"]["publishedAt"][:10]
             duration = item["contentDetails"]["duration"]  # ISO 8601 (PTxxMxxS)
-            duration_sec = int(
-                isodate.parse_duration(duration).total_seconds()
-            )  # convert to seconds
             stats = item.get("statistics", {})
             views = int(stats.get("viewCount", 0))
             likes = int(stats.get("likeCount", 0))
             comments = int(stats.get("commentCount", 0))
             url_video = f"https://www.youtube.com/watch?v={vid}"
 
+            published_date = pd.to_datetime(published_at, utc=True).date()
+            duration_sec = int(
+                isodate.parse_duration(duration).total_seconds()
+            )  # convert to seconds
+
             all_data.append(
                 [
                     vid,
-                    url_video,
                     title,
-                    duration_sec,
+                    published_date,
                     views,
-                    published_at,
+                    duration_sec,
                     likes,
                     comments,
+                    url_video,
                 ]
             )
 
@@ -158,22 +161,22 @@ def get_video_details(video_ids, api_key):
         all_data,
         columns=[
             "video_id",
-            "URL",
             "title",
-            "duration",
-            "views",
             "date",
+            "views",
+            "duration(sec)",
             "likes",
             "comments",
+            "URL",
         ],
     )
     return df
 
 
 if __name__ == "__main__":
-    playlist_ids = getPlaylistIds(VIDEO_IDS, API_KEY)
+    playlist_ids = get_playlist_ids(VIDEO_IDS, API_KEY)
     print(playlist_ids)
-    all_videos = getAllVideoIds(playlist_ids["playlist_id"].to_list(), API_KEY)
+    all_videos = get_all_video_ids(playlist_ids["playlist_id"].to_list(), API_KEY)
     print(all_videos.iloc[:10], f"length: {len(all_videos)}")
     video_details = get_video_details(all_videos["video_id"].to_list(), API_KEY)
     print(video_details.iloc[:10], f": {len(video_details)}")
