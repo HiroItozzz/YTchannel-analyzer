@@ -50,59 +50,50 @@ def subtitle_file_to_text(path: Path) -> str:
     return " ".join(lines_out)
 
 
-def find_downloaded_subfile(video_id: str, tmp_dir: Path = TMP_SUB_DIR) -> Path | None:
+def find_downloaded_subfile(video_ids: list[str]) -> Path | None:
     """
-    一時ディレクトリから、指定言語の字幕ファイルを探す（単一video_id向け）
+    一時ディレクトリから、指定言語の字幕ファイルを探す
     """
-    for lang in SUBTITLE_LANGS:
-        for ext in ("srt", "vtt"):
-            p = tmp_dir / f"{video_id}.{lang}.{ext}"
-            if p.exists():
-                return p
+    for video_id in video_ids:
+        for lang in SUBTITLE_LANGS:
+            for ext in ("srt", "vtt"):
+                p = TMP_SUB_DIR / f"{video_id}.{lang}.{ext}"
+                if p.exists():
+                    return p
     return None
-
-
-def download_subtitles_for_video(
-    video_id: str, tmp_dir: Path = TMP_SUB_DIR, langs: list[str] | None = None
-) -> None:
-    """
-    yt-dlpを使って指定videoの字幕をtmp_dirにダウンロードする（副作用のみ）。
-    テストでは`YoutubeDL`をモックしてください。
-    """
-    langs = langs or SUBTITLE_LANGS
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
-
-    # キャッシュディレクトリ作成
-    tmp_dir.mkdir(exist_ok=True, parents=True)
-
-    ydl_opts = {
-        "skip_download": True,  # 動画本体はダウンロードしない
-        "writesubtitles": True,  # 字幕をダウンロードする
-        "writeautomaticsub": True,  # 自動生成字幕もダウンロードする
-        "subtitleslangs": langs,  # 指定言語の字幕を取得
-        "subtitlesformat": "srt/vtt",  # 字幕フォーマット
-        "outtmpl": str(tmp_dir / "%(id)s.%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
-        "ignoreerrors": True,
-    }
-
-    with YoutubeDL(ydl_opts) as ydl:
-        ydl.download([video_url])
 
 
 def extract_subtitles_from_videos(video_ids: list[str]) -> pd.DataFrame:
     """
-    字幕をダウンロードし、df化する
+    字幕をダウンロードし、抽出
     """
-    data: list[dict] = []
+    data = []
 
     for video_id in video_ids:
-        try:
-            # ダウンロード（副作用）
-            download_subtitles_for_video(video_id)
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
 
-            # ダウンロード済み字幕ファイルを探す
+        # キャッシュディレクトリ作成
+        TMP_SUB_DIR.mkdir(exist_ok=True, parents=True)
+
+        # yt-dlp オプション: ダウンロードはスキップし、字幕のみを取得
+        ydl_opts = {
+            "skip_download": True,  # 動画本体はダウンロードしない
+            "writesubtitles": True,  # 字幕をダウンロードする
+            "writeautomaticsub": True,  # 自動生成字幕もダウンロードする
+            "subtitleslangs": SUBTITLE_LANGS,  # 指定言語の字幕を取得
+            "subtitlesformat": "srt/vtt",  # 字幕フォーマット
+            "outtmpl": str(
+                TMP_SUB_DIR / "%(id)s.%(ext)s"
+            ),  # 保存パスとファイル名のテンプレート
+            "quiet": True,  # ログを抑制
+            "no_warnings": True,  # 警告を抑制
+            "ignoreerrors": True,  # エラーを無視して続行
+        }
+
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                ydl.download([video_url])
+
             sub_path = find_downloaded_subfile(video_id)
 
             subtitles = subtitle_file_to_text(sub_path) if sub_path else ""
