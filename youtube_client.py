@@ -35,27 +35,26 @@ def get_playlist_ids(video_ids: list[str], api_key: str):
         ids = ",".join(video_ids[i : i + 50])
         url = f"{base_url}?part=snippet&id={ids}&key={api_key}"
 
-        try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            data = resp.json()
-        except requests.exceptions.RequestException as e:
-            print(f"API call error: {e}")
-            print("Could not retrieve data for video IDs:", ids)
-            continue
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            continue
+        resp = requests.get(url, timeout=10)
 
-        if DEBUG:
-            print(f"API call completed! Video IDs: {ids}")
+        try:
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as e:  # HTTPエラー処理
+            raise RuntimeError(
+                f"HTTP error. Please check your API key/video IDs. : {e}"
+            )
+        data = resp.json()
+        items = data.get("items", [])
+
+        if not items:  # video IDが無効な場合の処理
+            raise ValueError(f"No items found for video IDs: {ids}")
 
         for item in data["items"]:
             playlist_id = item.get("snippet", {}).get("channelId", "")
             if playlist_id:
                 playlist_id = playlist_id.replace(
                     "C", "U", 1
-                )  # converting "UU~~" to "UC~~"
+                )  # converting "UU~~" to "UC~~" : channel_ID to playlist_ID of all videos in the channel
             playlist_ids.append({"playlist_id": playlist_id})
 
         time.sleep(random.uniform(0.1, 0.2))
@@ -79,6 +78,8 @@ def get_all_video_ids(
     for playlist_id in playlist_ids:
         next_page_token = None
 
+        cnt = 0
+        memo = 0
         while True:
             url = (
                 f"{base_url}?part=snippet&playlistId={playlist_id}&maxResults=50"
@@ -107,11 +108,19 @@ def get_all_video_ids(
                 if (title_filter is not None) and (title_filter not in title):
                     continue
                 videos.append({"video_id": video_id, "title": title})
+                cnt += 1
+
+                if cnt % 25 == 0 and cnt > 0 and memo != cnt:
+                    print(
+                        f"Retrieved {cnt} videos so far from playlist {playlist_id}..."
+                    )
+                    memo = cnt
 
             next_page_token = data.get("nextPageToken")
             if not next_page_token:
                 break
-            time.sleep(random.uniform(0.1, 0.2))
+
+            time.sleep(random.uniform(0.3, 0.5))
 
     if DEBUG:
         print(f"Processing finished: {len(videos)} items")

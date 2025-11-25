@@ -67,7 +67,7 @@ def extract_subtitles_from_videos(video_ids: list[str]) -> pd.DataFrame:
     """
     data = []
 
-    for video_id in video_ids:
+    for cnt, video_id in enumerate(video_ids):
         video_url = f"https://www.youtube.com/watch?v={video_id}"
 
         # キャッシュディレクトリ作成
@@ -98,13 +98,14 @@ def extract_subtitles_from_videos(video_ids: list[str]) -> pd.DataFrame:
             data.append({"video_id": video_id, "subtitles": subtitles})
 
             if not sub_path:
-                print(f"{video_id}の字幕が見つかりませんでした。")
+                print(f"No subtitles were found for {video_id}.")
 
         except Exception as e:
-            print(f"{video_id}の字幕の抽出に失敗しました: {e}")
+            print(f"Failed to extract subtitles for {video_id}: {e}")
 
-        # YouTube APIのレート制限を回避するため待機
-        time.sleep(random.uniform(0.5, 1.5))
+        if cnt % 25 == 0 and cnt > 0:
+            print(f"Processed {cnt} videos so far...")
+        time.sleep(random.uniform(0.5, 1.0))
 
     df = pd.DataFrame(data)
     return df
@@ -117,9 +118,9 @@ def delete_temp_directory(temp_dir: Path):
     if temp_dir.exists():
         try:
             shutil.rmtree(temp_dir)
-            print(f"\n 一時ディレクトリ {temp_dir} を削除しました。")
+            print(f"\n Deleted temporary directory {temp_dir}. ")
         except OSError as e:
-            print(f"\n 警告: 一時ディレクトリの削除に失敗しました: {e}")
+            print(f"\n Warning: Failed to delete temporary directory: {e}")
 
 
 if __name__ == "__main__":
@@ -132,7 +133,7 @@ if __name__ == "__main__":
         print("-" * 30)
         print(f"video_id: {test_video_ids}")
         if df:
-            print(f"抽出された字幕:\n{df[["video_id", "subtitles"]]}...")
+            print(f"extracted subtitles:\n{df[["video_id", "subtitles"]]}...")
         print("-" * 30)
 
     finally:

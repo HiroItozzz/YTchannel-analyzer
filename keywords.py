@@ -12,7 +12,7 @@ A keyword dictionary for classifying medical, legal, and everyday unexpected eve
 # Medical related keywords
 # 医療関連キーワード
 # ============================================
-medical_keywords = [
+medical_keywords = {
     "病気","医療","治療","難病","がん","ガン","癌","感染症","手術","症状","薬","病院",
     "発熱","咳","喘息","糖尿病","高血圧","心臓","脳卒中","認知症",
     "アレルギー","感冒","肝臓","腎臓","骨折","腫瘍","感染","コロナ","インフル",
@@ -20,7 +20,7 @@ medical_keywords = [
     "医師","看護","救急","救命","クリニック","医大","ワクチン","リハビリ","食中毒",
     "重症","軽症","腹痛","命に関わる","死に至るケース","意識不明","生死の境をさまよう",
     "入院","退院","発症","ウイルス","菌","細菌","免疫","炎症","完治","回復"
-]
+}
 
 # ============================================
 # Law/crime related keywords
@@ -141,7 +141,7 @@ def analyze_by_keywords(df, category: str, threshold: float = 0.5) -> None:
     """
     if category not in KEYWORD_CATEGORIES:
         raise ValueError(
-            f"不正なカテゴリ: {category}. 有効値: {list(KEYWORD_CATEGORIES.keys())}"
+            f"Invalid category: {category}. Valid value: {list(KEYWORD_CATEGORIES.keys())}"
         )
 
     # 1. キーワード出現回数
@@ -178,7 +178,7 @@ def add_title_keyword_flags(df, category: str) -> None:
         >>> # df['medical_in_title'] が追加される
     """
     if category not in KEYWORD_CATEGORIES:
-        raise ValueError(f"不正なカテゴリ: {category}")
+        raise ValueError(f"Invalid category: {category}")
 
     df[f"{category}_in_title"] = (
         df["title"].fillna("").apply(lambda t: is_category(t, category))

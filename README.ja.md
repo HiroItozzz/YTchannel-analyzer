@@ -1,19 +1,43 @@
 ## Transcript Analyzer
 
-YouTube チャンネルの統計情報と字幕を取得し、キーワード分析（医療・法律・日常の意外）を行うツール。
-csv で出力。
+動画 ID から該当 YouTube チャンネルの全動画の統計情報と字幕全文を取得し、キーワード分析（医療・法律・日常の意外）を行うツール。
+csv 形式で出力します。
+
+### 背景
+
+YouTube チャンネルの運営に関わっていた際に使用したコードを整形しました。
+具体的には、「日テレ公式」チャンネルのうち、世界仰天ニュースの動画を対象に、医療・法律・日常の意外に関するキーワード分析と分類を行い、再生回数の傾向を分析する為のものでした。
+
+- 参考画像
+
+  ![スクリーンショット](sample_images/screenshot.png)
+
+## Requirements
+
+- **Python 3.13 以上**
+- 主要依存ライブラリ:
+  - `pandas >= 2.3`
+  - `requests >= 2.32`
+  - `yt-dlp >= 2025.11.12`
+  - 詳しくは `requirements.txt` を参照
 
 ---
 
 ## 🚀 クイックスタート
 
 環境変数を`.env` で設定：
+
 ```
 YOUTUBE_API_KEY=your_api_key
-SUBTITLE_LANGS=ja    # "en" for English
+SUBTITLE_LANGS=ja    # en, ko, zh-Hans etc...
+VIDEO_IDS=your_video_id1, your_video_id2,...
+TITLE_FILTER=        # ex. 世界仰天ニュース
+THRESHOLD=0.5        # 分類のための閾値。単位は1分あたり指定キーワード登場回数
 ```
 
-```pwsh
+実行
+
+```bash
 python main.py
 ```
 
@@ -54,117 +78,27 @@ python main.py
 | `fetch_transcripts.py` | yt-dlp で字幕取得                                     |
 | `keywords.py`          | キーワード定義・分析関数                              |
 
----
+- keywords.py
 
-### 分析対象チャンネル変更
-
-`main.py` の `VIDEO_IDS` を変更：
-
-```python
-VIDEO_IDS = ["YOUR_CHANNEL_VIDEO_ID",...]  # 複数チャンネル可能
-```
-
-### 出力先変更
-
-`main.py` の `OUTPUT_DIR` を変更：
-
-```python
-OUTPUT_DIR = Path("your_output_directory")
-```
+<img src="sample_images/keywords.png" width="600">
 
 ---
 
-## 📝 使用例
+## 工夫した点
 
-### 基本的な分析
+- YouTube DATA API の扱い
+  - YouTube API を叩けば一度でチャンネル全動画のそれぞれの統計情報を取得できるわけではなく、何度かに分けて別のリソースへリクエストを送る必要があり、その方法は複数考えられます。その中で、このコードでは最も取得しやすい動画 ID を入力とし、手軽に使えるようにしています。
+  - まず 1 件の動画 ID を使用して `videos` リソースから チャンネル ID（UC-形式）を取得し、そのチャンネルに対応して自動生成される全動画プレイリストの プレイリスト ID（UU-形式）へと文字列で置換します。その後、`playlistItems`リソースから全動画の動画 ID を取得。最後に再び`videos`リソースへリクエストを送ることで、チャンネル全動画の統計情報を取得するようにしました。
 
-```python
-import pandas as pd
-from keywords import analyze_by_keywords, count_keywords_in_category
+## 学んだこと
 
-df = pd.DataFrame({
-    'video_id': ['vid001'],
-    'transcript': ['医師が重症の病気を診断した'],
-    'duration': [900]  # 秒単位
-})
-
-# 医療分析
-analyze_by_keywords(df, "medical")
-print(df[['video_id', 'medical_per_min', 'is_medical']])
-```
-
-### 複数カテゴリ分析
-
-```python
-from keywords import KEYWORD_CATEGORIES, analyze_by_keywords
-
-for category in KEYWORD_CATEGORIES.keys():
-    analyze_by_keywords(df, category=category, threshold=0.5)
-```
-
----
-
-## 🔤 Keywords モジュール
-
-### インポート方法
-
-```python
-# 関数をインポート（最も簡単）
-from keywords import analyze_by_keywords, count_keywords_in_category, is_category
-
-# キーワード辞書をインポート
-from keywords import KEYWORD_CATEGORIES, medical_keywords, legal_keywords, daily_surprising_keywords
-```
-
-### よく使う関数
-
-**1. `is_category(text, category)` → True/False**
-
-```python
-if is_category("医師が重症を診断した", "medical"):
-    print("医療関連")
-```
-
-**2. `count_keywords_in_category(text, category)` → 出現回数**
-
-```python
-count = count_keywords_in_category("病気で入院して治療を受けた", "medical")
-# → 3
-```
-
-**3. `analyze_by_keywords(df, category, threshold=0.5)` → DataFrame 修正（インプレイス）**
-
-```python
-# DataFrame に以下の列を追加:
-# - {category}_word_count
-# - {category}_per_min (1分あたりのキーワード出現数)
-# - is_{category} (threshold 以上なら True)
-analyze_by_keywords(df, "medical", threshold=0.5)
-```
-
-### 使えるカテゴリ
-
-- `"medical"` → 医療関連
-- `"legal"` → 法律・犯罪
-- `"daily_surprising"` → 日常の意外な出来事
-
----
-
-## 🐛 トラブルシューティング
-
-| 問題                     | 原因                 | 解決策                                                               |
-| ------------------------ | -------------------- | -------------------------------------------------------------------- |
-| 字幕が空                 | ダウンロード失敗     | `tmp_subs/` を確認、`find_downloaded_subfile()` の引数をリストで渡す |
-| キーワードが検出されない | threshold が高すぎる | threshold を下げる（デフォルト 0.5）                                 |
-| API エラー               | レート制限           | `youtube_client.py` の `time.sleep()` を増やす                       |
-
----
+- パッケージ管理と仮想環境の設定方法
+- ユーザー定義値を環境変数で設定する方法
+- エラーハンドリングの詳細な場合分け
+- git の使い方（基本的なコマンド, .gitignore etc...）
+  ほか、このようなパッケージ化が初めてだったため、多くのことを学びました。
 
 ## 📚 参考資料
 
 - YouTube Data API: https://developers.google.com/youtube/v3
 - yt-dlp: https://github.com/yt-dlp/yt-dlp
-
-```
-
-```
