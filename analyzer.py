@@ -68,7 +68,9 @@ def get_playlist_ids(video_ids: list[str], api_key: str):
     return df
 
 
-def get_all_video_ids(playlist_ids: list[str], api_key: str) -> pd.DataFrame:
+def get_all_video_ids(
+    playlist_ids: list[str], api_key: str, title_filter: str | None = None
+) -> pd.DataFrame:
     base_url = "https://www.googleapis.com/youtube/v3/playlistItems"
     videos = []
     if DEBUG:
@@ -101,7 +103,10 @@ def get_all_video_ids(playlist_ids: list[str], api_key: str) -> pd.DataFrame:
 
             for item in data["items"]:
                 video_id = item["snippet"]["resourceId"]["videoId"]
-                videos.append({"video_id": video_id})
+                title = item["snippet"]["title"]
+                if (title_filter is not None) and (title_filter not in title):
+                    continue
+                videos.append({"video_id": video_id, "title": title})
 
             next_page_token = data.get("nextPageToken")
             if not next_page_token:
@@ -137,6 +142,8 @@ def get_video_details(video_ids: list[str], api_key) -> pd.DataFrame:
             likes = int(stats.get("likeCount", 0))
             comments = int(stats.get("commentCount", 0))
             url_video = f"https://www.youtube.com/watch?v={vid}"
+            channel_id = item["snippet"]["channelId"]
+            channel_title = item["snippet"]["channelTitle"]
 
             published_date = pd.to_datetime(published_at, utc=True).date()
             duration_sec = int(
@@ -153,6 +160,8 @@ def get_video_details(video_ids: list[str], api_key) -> pd.DataFrame:
                     likes,
                     comments,
                     url_video,
+                    channel_id,
+                    channel_title,
                 ]
             )
 
@@ -168,6 +177,8 @@ def get_video_details(video_ids: list[str], api_key) -> pd.DataFrame:
             "likes",
             "comments",
             "URL",
+            "channel_id",
+            "channel_title",
         ],
     )
     return df

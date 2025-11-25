@@ -2,12 +2,12 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 import pandas as pd
-import isodate
 
 import analyzer, fetch_transcripts
-from keywords import analyze_by_keywords, add_title_keyword_flags, KEYWORD_CATEGORIES
+from keywords import analyze_by_keywords, KEYWORD_CATEGORIES
 
-VIDEO_IDS = ["CuNik7M56UM"]
+VIDEO_IDS = ["XgTFPA20MU0"]  # 分析したいチャンネルの動画 (list)
+TITLE_FILTER = "世界仰天ニュース"  # フィルタリング用タイトルキーワード
 
 load_dotenv()
 API_KEY = os.environ["YOUTUBE_API_KEY"]
@@ -26,7 +26,6 @@ def analyze_keywords(df: pd.DataFrame) -> pd.DataFrame:
     for category in KEYWORD_CATEGORIES.keys():
         print(f"  分析中: {category}")
         analyze_by_keywords(df, category=category, threshold=0.5)
-        add_title_keyword_flags(df, category=category)
 
     # 2. 主要カテゴリを決定（最も出現回数が多いカテゴリ）
     def get_primary_category(row):
@@ -58,18 +57,12 @@ def analyze_and_save(df: pd.DataFrame, output_path: Path):
     """
     キーワード分析を実行してCSVに出力
     """
-
-    # 1. duration を秒からそのまま使用（既に get_video_details で秒単位のはず）
-    # もしISO 8601形式なら変換
-    if df["duration"].dtype == "object":
-        df["duration"] = df["duration"].apply(convert_duration_to_seconds)
-
-    # 2. 全カテゴリで分析
+    # 1. 全カテゴリで分析
     for category in KEYWORD_CATEGORIES.keys():
         print(f"  分析中: {category}")
         analyze_by_keywords(df, category=category, threshold=0.5)
 
-    # 3. 主要カテゴリを決定（最も出現回数が多いカテゴリ）
+    # 2. 主要カテゴリを決定（最も出現回数が多いカテゴリ）
     def get_primary_category(row):
         """各行で最も該当度が高いカテゴリを返す"""
         scores = {}
@@ -106,14 +99,20 @@ if __name__ == "__main__":
     # Step 2: 全動画ID取得
     print("[2] 全動画ID取得中...")
     playlist_ids = playlist_data["playlist_id"].tolist()
-    all_videos_data = analyzer.get_all_video_ids(playlist_ids, API_KEY)
+    filtered_videos_data = analyzer.get_all_video_ids(
+        playlist_ids, API_KEY, title_filter=TITLE_FILTER
+    )
     if DEBUG:
         print("All Videos Data:")
-        print(all_videos_data)
+        print(filtered_videos_data)
+
+    print(
+        f"{len(filtered_videos_data)}件の動画がタイトルフィルタ '{TITLE_FILTER}' に一致しました。"
+    )
 
     # Step 3: 動画詳細情報取得
     print("[3] 動画詳細情報取得中...")
-    all_video_ids = all_videos_data["video_id"].tolist()
+    all_video_ids = filtered_videos_data["video_id"].tolist()
     df_video_details = analyzer.get_video_details(all_video_ids, API_KEY)
     if DEBUG:
         print("Video Details:")
@@ -126,6 +125,7 @@ if __name__ == "__main__":
     # Step 5: データ統合
     print("[5] データ統合中...")
     result = pd.merge(df_video_details, df_subtitles, on="video_id", how="outer")
+
     if DEBUG:
         result.to_csv(
             OUTPUT_DIR / "debug_merged_data.csv",
@@ -135,11 +135,11 @@ if __name__ == "__main__":
 
     print(f"  統合行数: {len(result)}")
 
-    # Step 6: キーワード分析 & CSV出力
+    # Step 7: キーワード分析 & CSV出力
     print("[6] キーワード分析中...")
     result_analyzed = analyze_keywords(result)
 
-    # Step 7: CSV に保存
+    # Step 8: CSV に保存
     print("[7] 結果を保存中...")
     save_to_csv(result_analyzed, OUTPUT_DIR / "video_analysis_result.csv")
 
