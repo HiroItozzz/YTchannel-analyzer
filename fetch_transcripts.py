@@ -46,20 +46,18 @@ def subtitle_file_to_text(path: Path) -> str:
 
             lines_out.append(line)
 
-    # 全てのテキストをスペースで繋げる
-    return " ".join(lines_out)
+    return "".join(lines_out)
 
 
-def find_downloaded_subfile(video_ids: list[str]) -> Path | None:
+def find_downloaded_subfile(video_id: str) -> Path | None:
     """
     一時ディレクトリから、指定言語の字幕ファイルを探す
     """
-    for video_id in video_ids:
-        for lang in SUBTITLE_LANGS:
-            for ext in ("srt", "vtt"):
-                p = TMP_SUB_DIR / f"{video_id}.{lang}.{ext}"
-                if p.exists():
-                    return p
+    for lang in SUBTITLE_LANGS:
+        for ext in ("srt", "vtt"):
+            p = TMP_SUB_DIR / f"{video_id}.{lang}.{ext}"
+            if p.exists():
+                return p
     return None
 
 

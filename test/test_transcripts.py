@@ -40,40 +40,13 @@ def test_get_video_details():
     )
     result = get_video_details(video_ids["video_id"].to_list(), API_KEY)
 
-
-from pathlib import Path
-
-
-def _make_dummy_ydl(tmp_path):
-    class DummyYDL:
-        def __init__(self, opts):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-        def download(self, urls):
-            # urls: ['https://www.youtube.com/watch?v=VIDEOID']
-            for url in urls:
-                vid = url.split("v=")[-1]
-                p = tmp_path / f"{vid}.ja.srt"
-                p.write_text(
-                    "1\n00:00:00,000 --> 00:00:01,000\nHello\n", encoding="utf-8"
-                )
-
-    return DummyYDL
+    assert len(result) > 0
+    assert "video_id" in result.columns  # video_id列がある
+    assert result["video_id"].iloc[0] != ""  # 値が入っている
 
 
-def test_extract_subtitles_from_videos(tmp_path, monkeypatch):
-    # 一時ディレクトリをテスト用に差し替え
-    monkeypatch.setattr(fetch_transcripts, "TMP_SUB_DIR", tmp_path)
-    # YoutubeDL をモックして字幕ファイルを作成させる
-    monkeypatch.setattr(fetch_transcripts, "YoutubeDL", _make_dummy_ydl(tmp_path))
-
-    result = fetch_transcripts.extract_subtitles_from_videos(["dummy123"])
+def test_extract_subtitles_from_videos():
+    result = fetch_transcripts.extract_subtitles_from_videos(VIDEO_IDS)
 
     assert len(result) > 0
     assert "video_id" in result.columns  # video_id列がある
