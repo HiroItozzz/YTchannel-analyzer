@@ -2,9 +2,7 @@ import os
 from dotenv import load_dotenv
 import requests
 import pandas as pd
-from yt_dlp import YoutubeDL
 import isodate
-from datetime import datetime
 import time
 import random
 
@@ -12,6 +10,7 @@ VIDEO_IDS = ["SyibOFcjCHk"]
 
 load_dotenv()
 API_KEY = os.environ["YOUTUBE_API_KEY"]
+SUBTITLE_LANGS = os.getenv("SUBTITLE_LANGS", "ja")   # default to Japanese
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 if not API_KEY:
@@ -21,9 +20,9 @@ if DEBUG:
     print(f"API Key loaded: {API_KEY[:10]}...")
 
 
-def get_playlist_ids(video_ids, api_key):
+def get_playlist_ids(video_ids: list[str], api_key: str):
     """Get the channel ID (UC~~)
-    →→→→ convert it to the automatically generated playlist ID (UU~~) of all videos on the channel
+    →→→ convert it to the automatically generated playlist ID (UU~~) of all videos on the channel
     """
 
     base_url = "https://www.googleapis.com/youtube/v3/videos"
@@ -69,7 +68,7 @@ def get_playlist_ids(video_ids, api_key):
     return df
 
 
-def get_all_video_ids(playlist_ids: list, api_key) -> pd.DataFrame:
+def get_all_video_ids(playlist_ids: list[str], api_key: str) -> pd.DataFrame:
     base_url = "https://www.googleapis.com/youtube/v3/playlistItems"
     videos = []
     if DEBUG:
@@ -115,7 +114,7 @@ def get_all_video_ids(playlist_ids: list, api_key) -> pd.DataFrame:
     return pd.DataFrame(videos)
 
 
-def get_video_details(video_ids: list, api_key) -> pd.DataFrame:
+def get_video_details(video_ids: list[str], api_key) -> pd.DataFrame:
     """Get detailed information from video ID list"""
 
     base_url = "https://www.googleapis.com/youtube/v3/videos"
