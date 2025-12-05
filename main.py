@@ -55,6 +55,8 @@ def analyze_subtitles(df: pd.DataFrame) -> pd.DataFrame:
         )
 
     df["primary_category"] = df.apply(get_primary_category, axis=1)
+    first_cols = ["video_id", "title", "primary_category"]
+    df = df[first_cols + [c for c in df.columns if c not in first_cols]]
 
     return df
 
@@ -152,12 +154,12 @@ if __name__ == "__main__":
                 [
                     "video_id",
                     "title",
+                    "primary_category",
                     "medical_per_min",
                     "legal_per_min",
                     "daily_surprising_per_min",
-                    "primary_category",
                 ]
             ].head(10)
         )
 
-    print(f"\n output file: {OUTPUT_DIR / 'video_analysis_result.csv'}")
+    print(f"\n output file: {OUTPUT_DIR / 'analysis_result.csv'}")

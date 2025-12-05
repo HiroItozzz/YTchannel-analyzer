@@ -133,7 +133,7 @@ if __name__ == "__main__":
         print("-" * 30)
         print(f"video_id: {test_video_ids}")
         if df:
-            print(f"extracted subtitles:\n{df[["video_id", "subtitles"]]}...")
+            print(f"extracted subtitles:\n{df[['video_id', 'subtitles']]}...")
         print("-" * 30)
 
     finally:

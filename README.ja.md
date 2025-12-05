@@ -11,7 +11,7 @@ YouTube チャンネルの運営に関わっていた際に使用したコード
 
 - 参考画像
 
-  ![スクリーンショット](sample_images/screenshot.png)
+  ![スクリーンショット](sample_images/result.png)
 
 
 ## Requirements

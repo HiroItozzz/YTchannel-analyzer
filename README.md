@@ -7,7 +7,7 @@ Output in csv format.
 
 - sample image
 
-  ![screenshot](sample_images/screenshot.png)
+  ![screenshot](sample_images/result.png)
 
 ## Requirements
 
